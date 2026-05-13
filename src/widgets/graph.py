@@ -1,131 +1,78 @@
-import networkx as nx
-import plotly.graph_objects as go
-from dash import dcc
-import numpy as np
-
+import dash_cytoscape as cyto
+from collections import defaultdict
 from src.Dataset import Dataset
 
+data = Dataset.data
+
+my_stylesheet=[
+                {
+                    "selector": "node",
+                    "style": {
+                        "label": "data(label)",
+                        "width": "mapData(degree, 1, 15, 20, 60)",
+                        "height": "mapData(degree, 1, 15, 20, 60)",
+                        "background-color": "#0074D9",
+                        "text-valign": "center",
+                        "text-halign": "center",
+                        "text-outline-color": "#fff",
+                        "text-outline-width": 2,
+                        "color": "#222",   
+                    },
+                },
+                {
+                    "selector": "edge",
+                    "style": {
+                        "width": "mapData(weight, 1, 5, 1, 6)",
+                        "line-color": "#bbb",
+                        "curve-style": "bezier",
+                    },
+                },
+            ]
+
 def create_graph(selected_rows=None):
-    graph_figure = draw_graph(selected_rows)
-    return dcc.Graph(
+    return cyto.Cytoscape(
         id="graph",
-        figure=graph_figure,
+        elements=build_elements(selected_rows),
+        style={"width": "100%", "height": "100%"},
         className="stretchy-widget border-widget",
-        responsive=True,
-        config = {
-            'displaylogo': False,
-            'modeBarButtonsToRemove': ['autoscale', 'lasso2d', 'select2d'], # look here to remove buttons
-            'displayModeBar': True,
-        }
+        layout={"name": "cose"},
+        stylesheet=my_stylesheet,
+            
     )
+def build_elements(selected_rows):
 
-def draw_graph(selected_rows, valid_birds=None, drag_select=False):
+    if not selected_rows: #if there are no selected rows, return an empty list
+        return []
+    
+    bird_names = {row["class_name"] for row in selected_rows} #get only the unique bird classes
 
-    # Default to displaying Blank graph with message if nothing is selected
-    if not selected_rows or len(selected_rows) == 0:
-        fig = go.Figure()
+    edge_weights = defaultdict(int) #create a default dict 
 
-        # Add only layout information
-        fig.update_layout(
-            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-            annotations=[
-                dict(
-                    text="Select data on the scatterplot",
-                    xref="paper",
-                    yref="paper",
-                    showarrow=False,
-                    font=dict(size=28, color="gray")
-                )
-            ],
-            margin=dict(b=0, l=0, r=0, t=40),  # Adjust margins to ensure the text is visible
-        )
-
-        return fig
-
-    bird_classes = [bird_details["class_name"] for bird_details in selected_rows] # selected_rows[0]["class_name"]
-    bird_species = [bird_class.split(" ")[-1] for bird_class in bird_classes] # bird_class.split(" ")[-1]
-
-    # Initialize a NetworkX graph
-    G = nx.Graph()
-
-    # Only look at selected species
-    species_df = Dataset.data.loc[Dataset.data["species_name"].isin(bird_species)]
-    # Filter out class names that are not in selected region
-    if valid_birds is not None:
-        species_df = species_df.loc[species_df["class_name"].isin(valid_birds)]
-    selected_nodes = set(bird_classes)
-
-    # Add nodes (all unique bird names)
-    for bird_name in species_df['class_name']:
-        G.add_node(bird_name)
-
-    # Add edges (between birds of the same species)
-    species_groups = species_df.groupby('species_name')['class_name'].apply(list)
-    for birds in species_groups:
-        for i, bird_a in enumerate(birds[:-1]):
-            for bird_b in birds[i+1:]:
-                if bird_a in selected_nodes or bird_b in selected_nodes:
-                    G.add_edge(bird_a, bird_b)
+    for bird in bird_names:
+        bird_sep = bird.split() #tokenize the bird name into seperate words 
+        for i in range (len(bird_sep)):
+            for j in range(i+1, len(bird_sep)):
+                word1, word2 = bird_sep[i], bird_sep[j] #create tuple of words
+                word1, word2 = sorted([word1, word2]) #sort the words 
+                edge_weights[(word1, word2)] += 1 #increment the weight of the edge connecting the two words (bigger edge weight means more bird names share those two words)
 
 
-    # Get positions of nodes using a layout
-    k_value = 2/np.sqrt(G.number_of_nodes())
-    pos = nx.spring_layout(G, scale=15, k=k_value)
+    node_degree = defaultdict(int) #create a default dict to store the degree of each node
 
-    # Create edge traces
-    edge_trace = go.Scatter(
-        x=[],
-        y=[],
-        line=dict(width=1, color='gray'),
-        hoverinfo='none',
-        mode='lines'
-    )
+    for word1, word2 in edge_weights: 
+        node_degree[word1] += 1#increment the degree of word1 by the weight of the edge
+        node_degree[word2] += 1 #increment the degree of word2 by the weight of the edge
 
-    for edge in G.edges():
-        x0, y0 = pos[edge[0]]
-        x1, y1 = pos[edge[1]]
-        edge_trace['x'] += (x0, x1, None)
-        edge_trace['y'] += (y0, y1, None)
+    elements = [] 
 
-    # Create node traces
-    node_trace = go.Scatter(
-        x=[],
-        y=[],
-        text=[],
-        mode='markers+text',
-        hoverinfo='text',
-        marker=dict(
-            size=20,
-            colorscale='ylgnbu',
-            line=dict(width=0, color='darkblue')
-        )
-    )
+    #node creation
+    for word, degree in node_degree.items():
+        elements.append({"data":{"id": word, "label" : word, "degree": degree}})
+    
+    #edge creation
+    for (word1, word2), weight in edge_weights.items(): 
+        elements.append({"data":{"id" : f"{word1}_{word2}", "source": word1, "target": word2, "weight": weight}})
 
-    node_colours = []
-    for node in G.nodes():
-        x, y = pos[node]
-        node_trace['x'] += (x,)
-        node_trace['y'] += (y,)
-        node_trace['text'] += (node,)
-
-        # Assign color based on whether the node is in the highlight list
-        if node in bird_classes:
-            node_colours.append('rgba(255, 0, 0, 0.5)'*(1-drag_select) + 'rgba(31, 119, 180, 0.5)'*drag_select)
-        else:
-            node_colours.append('rgba(31, 119, 180, 0.5)')
-
-    # Add colors to nodes
-    node_trace['marker']['color'] = node_colours
-
-    # Create a figure
-    layout = go.Layout(
-        showlegend=False,
-        hovermode='closest',
-        margin=dict(b=0, l=0, r=0, t=40),
-        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-        font=dict(size=16)
-    )
-    return go.Figure(data=[edge_trace, node_trace], layout=layout)
+    return elements
+    
 
