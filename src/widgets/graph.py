@@ -31,6 +31,14 @@ my_stylesheet=[
                     },
                 },
             ]
+my_layout = {
+                "name": "cose",
+                "animate": False,         # skip the animation; faster
+                "nodeRepulsion": 8000,    # how strongly nodes push apart
+                "idealEdgeLength": 100,   # preferred edge length
+            }
+
+
 
 def create_graph(selected_rows=None):
     return cyto.Cytoscape(
@@ -38,16 +46,15 @@ def create_graph(selected_rows=None):
         elements=build_elements(selected_rows),
         style={"width": "100%", "height": "100%"},
         className="stretchy-widget border-widget",
-        layout={"name": "cose"},
+        layout=my_layout,
         stylesheet=my_stylesheet,
             
     )
 def build_elements(selected_rows):
-
-    if not selected_rows: #if there are no selected rows, return an empty list
-        return []
-    
-    bird_names = {row["class_name"] for row in selected_rows} #get only the unique bird classes
+    if not selected_rows:
+        bird_names = set(Dataset.data["class_name"].unique())
+    else:
+        bird_names = {row["class_name"] for row in selected_rows}
 
     edge_weights = defaultdict(int) #create a default dict 
 

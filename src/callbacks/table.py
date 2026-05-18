@@ -17,12 +17,13 @@ from src.widgets import graph, gallery, scatterplot, histogram, heatmap, wordclo
      Output("heatmap", "figure"),
      Output("characteristics-description", 'children'),
      Output("generated-image", 'src')
-     ],
-    State('scatterplot', 'figure'),
+    ],
     [Input("grid", "selectedRows"),
-    Input("grid", "rowData")],
+     Input("grid", "rowData")],
+    State('scatterplot', 'figure'),
 )
-def table_row_is_selected(scatterplot_fig, selected_rows, added_rows):
+
+def table_row_is_selected(selected_rows, added_rows, scatterplot_fig):
     if type(selected_rows) is dict:
         raise PreventUpdate()
 
@@ -59,9 +60,8 @@ def table_row_is_selected(scatterplot_fig, selected_rows, added_rows):
         )
         wordcloud_data = group_by_count[['class_name', 'count_in_selection']].sort_values(by='count_in_selection', ascending=False).values
         scatterplot.highlight_class_on_scatterplot(scatterplot_fig, None)
-        graph_input = [{"class_name": class_name} for class_name in data_selected.sample(min(config.MAX_GRAPH_NODES, len(data_selected)))['class_name'].values]
-        graph_elements = graph.build_elements(graph_input)
-
+        graph_input = [{"class_name": cn} for cn in data_selected["class_name"].unique()]
+        graph_elements = graph.build_elements(graph_input)  
     sample_data = data_selected.sample(min(len(data_selected), config.IMAGE_GALLERY_SIZE), random_state=1)
     gallery_children = gallery.create_gallery_children(sample_data['image_path'].values, sample_data['class_name'].values)
 
