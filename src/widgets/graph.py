@@ -32,9 +32,9 @@ my_stylesheet=[
             ]
 my_layout = {
                 "name": "cose",
-                "animate": False,         # skip the animation; faster
-                "nodeRepulsion": 80000,    # how strongly nodes push apart
-                "idealEdgeLength": 100,   # preferred edge length
+                "animate": False,
+                "nodeRepulsion": 80000,
+                "idealEdgeLength": 100,
             }
 
 
@@ -55,31 +55,29 @@ def build_elements(selected_rows):
     else:
         bird_names = {row["class_name"] for row in selected_rows}
 
-    edge_weights = defaultdict(int) #create a default dict 
+    edge_weights = defaultdict(int)
 
     for bird in bird_names:
-        bird_sep = bird.split() #tokenize the bird name into seperate words 
+        bird_sep = bird.split()
         for i in range (len(bird_sep)):
             for j in range(i+1, len(bird_sep)):
-                word1, word2 = bird_sep[i], bird_sep[j] #create tuple of words
-                word1, word2 = sorted([word1, word2]) #sort the words 
-                edge_weights[(word1, word2)] += 1 #increment the weight of the edge connecting the two words (bigger edge weight means more bird names share those two words)
+                word1, word2 = bird_sep[i], bird_sep[j]
+                word1, word2 = sorted([word1, word2])
+                edge_weights[(word1, word2)] += 1
 
 
-    node_degree = defaultdict(int) #create a default dict to store the degree of each node
+    node_degree = defaultdict(int)
 
     for word1, word2 in edge_weights: 
-        node_degree[word1] += 1#increment the degree of word1 by the weight of the edge
-        node_degree[word2] += 1 #increment the degree of word2 by the weight of the edge
+        node_degree[word1] += 1
+        node_degree[word2] += 1
 
     elements = [] 
 
-    #node creation
     for word, degree in node_degree.items():
         elements.append({"data":{"id": word, "label" : word, "degree": degree}})
     
-    #edge creation
-    for (word1, word2), weight in edge_weights.items(): 
+    for (word1, word2), weight in edge_weights.items():
         elements.append({"data":{"id" : f"{word1}_{word2}", "source": word1, "target": word2, "weight": weight}})
 
     return elements

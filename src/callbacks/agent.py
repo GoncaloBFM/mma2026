@@ -7,9 +7,11 @@ from diffusers import StableDiffusionPipeline
 from src import config, utils
 
 lock = threading.Lock()
+print('STUFF')
 pipe = StableDiffusionPipeline.from_pretrained(
     "runwayml/stable-diffusion-v1-5"
 ).to('cuda' if torch.cuda.is_available() else ('mps' if torch.backends.mps.is_available() else 'cpu'))
+print('LLLL')
 
 @callback(
     Output('generated-image', 'src', allow_duplicate=True),
