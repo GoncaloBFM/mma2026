@@ -15,10 +15,9 @@ my_stylesheet=[
                         "width": "mapData(degree, 1, 15, 20, 60)",
                         "height": "mapData(degree, 1, 15, 20, 60)",
                         "background-color": "#0074D9",
-                        "text-valign": "center",
-                        "text-halign": "center",
                         "text-outline-color": "#fff",
                         "text-outline-width": 2,
+                        "font-size":10,
                         "color": "#222",   
                     },
                 },
@@ -34,7 +33,7 @@ my_stylesheet=[
 my_layout = {
                 "name": "cose",
                 "animate": False,         # skip the animation; faster
-                "nodeRepulsion": 8000,    # how strongly nodes push apart
+                "nodeRepulsion": 80000,    # how strongly nodes push apart
                 "idealEdgeLength": 100,   # preferred edge length
             }
 
